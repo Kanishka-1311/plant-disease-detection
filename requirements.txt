@@ -1,0 +1,5 @@
+tensorflow>=2.15
+streamlit>=1.30
+numpy
+matplotlib
+Pillow

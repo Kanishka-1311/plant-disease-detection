@@ -1,0 +1,26 @@
+{
+  "model_name": "resnet50",
+  "image_size": [
+    224,
+    224
+  ],
+  "class_names": [
+    "Apple_Black_Rot",
+    "Apple_Scab",
+    "Corn_Common_Rust",
+    "Corn_Northern_Leaf_Blight",
+    "Grape_Black_Rot",
+    "Potato_Early_Blight",
+    "Potato_Late_Blight",
+    "Tomato_Early_Blight",
+    "Tomato_Late_Blight"
+  ],
+  "preprocessing": "resnet50",
+  "custom_objects": null,
+  "metrics": {
+    "accuracy": 0.9106145251396648,
+    "precision": 0.9123777334084271,
+    "recall": 0.9106145251396648,
+    "f1_score": 0.9109206375092991
+  }
+}
