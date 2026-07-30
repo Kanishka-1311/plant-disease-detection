@@ -140,7 +140,7 @@ def overlay_gradcam(raw_image, heatmap, image_size, alpha=0.4):
     heatmap_resized = tf.image.resize(
         heatmap_uint8[..., np.newaxis], image_size
     ).numpy().astype("uint8")[..., 0]
-    jet = cm.get_cmap("jet")
+    jet = cm.colormaps["jet"]
     jet_heatmap = jet(heatmap_resized)[:, :, :3]
     jet_heatmap = np.uint8(jet_heatmap * 255)
     overlay = np.uint8(jet_heatmap * alpha + raw_image * (1 - alpha))
@@ -150,18 +150,77 @@ def overlay_gradcam(raw_image, heatmap, image_size, alpha=0.4):
 # --------------------------------------------------------------------------
 # Streamlit UI
 # --------------------------------------------------------------------------
-st.set_page_config(page_title="Plant Disease Detection", layout="wide")
+st.set_page_config(page_title="Plant Disease Detection", page_icon="🌿", layout="wide")
+
+st.markdown("""
+<style>
+    .stApp { background: #f6f8f4; }
+    #MainMenu, footer, header { visibility: hidden; }
+
+    .hero {
+        background: linear-gradient(135deg, #2d5a3d 0%, #4a8b5c 100%);
+        padding: 2.5rem 2.5rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        color: white;
+    }
+    .hero h1 { margin: 0; font-size: 2.1rem; font-weight: 700; }
+    .hero p { margin: 0.4rem 0 0 0; opacity: 0.9; font-size: 1rem; }
+
+    .stat-row { display: flex; gap: 1rem; margin-top: 1.2rem; }
+    .stat-pill {
+        background: rgba(255,255,255,0.15);
+        border-radius: 10px;
+        padding: 0.6rem 1rem;
+        flex: 1;
+    }
+    .stat-pill .label { font-size: 0.75rem; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-pill .value { font-size: 1.3rem; font-weight: 700; }
+
+    .card {
+        background: white;
+        border-radius: 14px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        border: 1px solid #e8ece6;
+    }
+
+    .result-banner {
+        background: linear-gradient(135deg, #4a8b5c 0%, #6bab7c 100%);
+        border-radius: 14px;
+        padding: 1.3rem 1.6rem;
+        color: white;
+        margin-bottom: 1rem;
+    }
+    .result-banner .tag { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+    .result-banner .cls { font-size: 1.8rem; font-weight: 700; margin: 0.2rem 0; }
+    .result-banner .conf { font-size: 0.95rem; opacity: 0.9; }
+
+    .score-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.35rem 0; }
+    .score-name { width: 190px; font-size: 0.88rem; color: #333; flex-shrink: 0; }
+    .score-track { flex: 1; background: #eef1ec; border-radius: 6px; height: 10px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #4a8b5c, #7bc491); }
+    .score-pct { width: 52px; text-align: right; font-size: 0.85rem; color: #555; }
+
+    div[data-testid="stFileUploader"] { background: white; border-radius: 12px; padding: 0.5rem; border: 1px solid #e8ece6; }
+</style>
+""", unsafe_allow_html=True)
 
 model, meta, is_cnn = load_deployed_model()
 
-st.title("🌿 Plant Disease Detection")
-st.caption(
-    f"Serving **{meta['model_name']}** — "
-    f"val accuracy: {meta['metrics']['accuracy']:.3f}, "
-    f"F1: {meta['metrics']['f1_score']:.3f}"
-)
+st.markdown(f"""
+<div class="hero">
+    <h1>🌿 Plant Disease Detection</h1>
+    <p>Upload a leaf photo to identify the disease and see where the model focused.</p>
+    <div class="stat-row">
+        <div class="stat-pill"><div class="label">Model</div><div class="value">{meta['model_name']}</div></div>
+        <div class="stat-pill"><div class="label">Accuracy</div><div class="value">{meta['metrics']['accuracy']*100:.1f}%</div></div>
+        <div class="stat-pill"><div class="label">F1 score</div><div class="value">{meta['metrics']['f1_score']*100:.1f}%</div></div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader("Upload a leaf image", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload a leaf image", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
 
 if uploaded_file is not None:
     image_size = tuple(meta["image_size"])
@@ -173,27 +232,66 @@ if uploaded_file is not None:
     img_array = tf.expand_dims(tf.convert_to_tensor(raw_array, dtype=tf.float32), 0)
     preprocessed = preprocess_fn(img_array)
 
+    st.write("")
     col1, col2 = st.columns(2)
 
     with col1:
-        st.image(pil_image, caption="Uploaded image", use_container_width=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("**Uploaded image**")
+        st.image(pil_image, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if is_cnn:
         heatmap, predictions = make_gradcam_heatmap(preprocessed, model)
         overlay = overlay_gradcam(raw_array, heatmap, image_size)
         with col2:
-            st.image(overlay, caption="Grad-CAM", use_container_width=True)
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("**Grad-CAM — where the model looked**")
+            st.image(overlay, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
     else:
         predictions = model.predict(preprocessed, verbose=0)[0]
         with col2:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
             st.info("Grad-CAM isn't available for ViT — it needs attention-rollout instead.")
+            st.markdown('</div>', unsafe_allow_html=True)
 
     scores = {name: float(p) for name, p in zip(class_names, predictions)}
     sorted_scores = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
-
-    st.subheader("Prediction")
     top_class = next(iter(sorted_scores))
-    st.success(f"**{top_class}** ({sorted_scores[top_class]*100:.1f}% confidence)")
+    top_conf = sorted_scores[top_class]
 
-    st.subheader("All class scores")
-    st.bar_chart(sorted_scores)
+    st.write("")
+    st.markdown(f"""
+    <div class="result-banner">
+        <div class="tag">Predicted disease</div>
+        <div class="cls">{top_class.replace('_', ' ')}</div>
+        <div class="conf">{top_conf*100:.1f}% confidence</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    rows_html = ""
+    max_score = max(sorted_scores.values()) or 1.0
+    for name, score in sorted_scores.items():
+        width_pct = (score / max_score) * 100
+        rows_html += f"""
+        <div class="score-row">
+            <div class="score-name">{name.replace('_', ' ')}</div>
+            <div class="score-track"><div class="score-fill" style="width:{width_pct:.1f}%"></div></div>
+            <div class="score-pct">{score*100:.1f}%</div>
+        </div>
+        """
+
+    st.markdown(f"""
+    <div class="card">
+        <div style="font-weight:600; margin-bottom:0.8rem;">All class scores</div>
+        {rows_html}
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div class="card" style="text-align:center; padding: 3rem 1.5rem; color: #888;">
+        Upload a leaf image above to get a prediction.
+    </div>
+    """, unsafe_allow_html=True)
+
