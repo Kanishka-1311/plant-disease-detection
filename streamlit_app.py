@@ -12,6 +12,7 @@ Deploy for free at https://share.streamlit.io by connecting this repo.
 
 import json
 import os
+import textwrap
 
 import numpy as np
 import streamlit as st
@@ -22,6 +23,13 @@ from tensorflow.keras.applications.efficientnet import preprocess_input as effic
 from PIL import Image
 import matplotlib
 import matplotlib.cm as cm
+
+
+def html(markup: str):
+    """Render raw HTML safely. Markdown treats 4+ space indented lines as
+    code blocks instead of HTML, so this strips that indentation first."""
+    st.markdown(textwrap.dedent(markup).strip(), unsafe_allow_html=True)
+
 
 
 # --------------------------------------------------------------------------
@@ -153,7 +161,7 @@ def overlay_gradcam(raw_image, heatmap, image_size, alpha=0.4):
 # --------------------------------------------------------------------------
 st.set_page_config(page_title="Plant Disease Detection", page_icon="🌿", layout="wide")
 
-st.markdown("""
+html("""
 <style>
     .stApp { background: #f6f8f4; }
     #MainMenu, footer, header { visibility: hidden; }
@@ -205,11 +213,11 @@ st.markdown("""
 
     div[data-testid="stFileUploader"] { background: white; border-radius: 12px; padding: 0.5rem; border: 1px solid #e8ece6; }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 model, meta, is_cnn = load_deployed_model()
 
-st.markdown(f"""
+html(f"""
 <div class="hero">
     <h1>🌿 Plant Disease Detection</h1>
     <p>Upload a leaf photo to identify the disease and see where the model focused.</p>
@@ -219,7 +227,7 @@ st.markdown(f"""
         <div class="stat-pill"><div class="label">F1 score</div><div class="value">{meta['metrics']['f1_score']*100:.1f}%</div></div>
     </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 uploaded_file = st.file_uploader("Upload a leaf image", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
 
@@ -237,25 +245,25 @@ if uploaded_file is not None:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        html('<div class="card">')
         st.markdown("**Uploaded image**")
         st.image(pil_image, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        html('</div>')
 
     if is_cnn:
         heatmap, predictions = make_gradcam_heatmap(preprocessed, model)
         overlay = overlay_gradcam(raw_array, heatmap, image_size)
         with col2:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            html('<div class="card">')
             st.markdown("**Grad-CAM — where the model looked**")
             st.image(overlay, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            html('</div>')
     else:
         predictions = model.predict(preprocessed, verbose=0)[0]
         with col2:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            html('<div class="card">')
             st.info("Grad-CAM isn't available for ViT — it needs attention-rollout instead.")
-            st.markdown('</div>', unsafe_allow_html=True)
+            html('</div>')
 
     scores = {name: float(p) for name, p in zip(class_names, predictions)}
     sorted_scores = dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
@@ -263,36 +271,37 @@ if uploaded_file is not None:
     top_conf = sorted_scores[top_class]
 
     st.write("")
-    st.markdown(f"""
-    <div class="result-banner">
-        <div class="tag">Predicted disease</div>
-        <div class="cls">{top_class.replace('_', ' ')}</div>
-        <div class="conf">{top_conf*100:.1f}% confidence</div>
-    </div>
-    """, unsafe_allow_html=True)
+    html(f"""
+<div class="result-banner">
+    <div class="tag">Predicted disease</div>
+    <div class="cls">{top_class.replace('_', ' ')}</div>
+    <div class="conf">{top_conf*100:.1f}% confidence</div>
+</div>
+""")
 
-    rows_html = ""
     max_score = max(sorted_scores.values()) or 1.0
+    row_lines = []
     for name, score in sorted_scores.items():
         width_pct = (score / max_score) * 100
-        rows_html += f"""
-        <div class="score-row">
-            <div class="score-name">{name.replace('_', ' ')}</div>
-            <div class="score-track"><div class="score-fill" style="width:{width_pct:.1f}%"></div></div>
-            <div class="score-pct">{score*100:.1f}%</div>
-        </div>
-        """
+        row_lines.append(
+            f'<div class="score-row">'
+            f'<div class="score-name">{name.replace("_", " ")}</div>'
+            f'<div class="score-track"><div class="score-fill" style="width:{width_pct:.1f}%"></div></div>'
+            f'<div class="score-pct">{score*100:.1f}%</div>'
+            f'</div>'
+        )
+    rows_html = "".join(row_lines)
 
-    st.markdown(f"""
-    <div class="card">
-        <div style="font-weight:600; margin-bottom:0.8rem;">All class scores</div>
-        {rows_html}
-    </div>
-    """, unsafe_allow_html=True)
+    html(f"""
+<div class="card">
+<div style="font-weight:600; margin-bottom:0.8rem;">All class scores</div>
+{rows_html}
+</div>
+""")
 else:
-    st.markdown("""
-    <div class="card" style="text-align:center; padding: 3rem 1.5rem; color: #888;">
-        Upload a leaf image above to get a prediction.
-    </div>
-    """, unsafe_allow_html=True)
+    html("""
+<div class="card" style="text-align:center; padding: 3rem 1.5rem; color: #888;">
+    Upload a leaf image above to get a prediction.
+</div>
+""")
 
