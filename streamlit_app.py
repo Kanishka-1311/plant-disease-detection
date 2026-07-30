@@ -20,6 +20,7 @@ from tensorflow.keras import layers
 from tensorflow.keras.applications.resnet50 import preprocess_input as resnet_preprocess
 from tensorflow.keras.applications.efficientnet import preprocess_input as efficientnet_preprocess
 from PIL import Image
+import matplotlib
 import matplotlib.cm as cm
 
 
@@ -140,7 +141,7 @@ def overlay_gradcam(raw_image, heatmap, image_size, alpha=0.4):
     heatmap_resized = tf.image.resize(
         heatmap_uint8[..., np.newaxis], image_size
     ).numpy().astype("uint8")[..., 0]
-    jet = cm.colormaps["jet"]
+    jet = matplotlib.colormaps["jet"]
     jet_heatmap = jet(heatmap_resized)[:, :, :3]
     jet_heatmap = np.uint8(jet_heatmap * 255)
     overlay = np.uint8(jet_heatmap * alpha + raw_image * (1 - alpha))
